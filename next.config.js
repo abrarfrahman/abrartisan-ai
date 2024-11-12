@@ -23,8 +23,11 @@ const nextConfig = {
             ? "http://127.0.0.1:8000/api/py/openapi.json"
             : "/api/py/openapi.json",
       },
+    ];
+  },
+  headers: async () => {
+    return [
       {
-        // matching all API routes
         source: "/api/:path*",
         headers: [
           { key: "Access-Control-Allow-Credentials", value: "true" },
@@ -33,8 +36,9 @@ const nextConfig = {
           { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" },
         ]
       }
-    ];
-  },
+    ]
+  }
+
 };
 
 module.exports = nextConfig;
