@@ -201,7 +201,7 @@ export default function ChatWidget() {
     return "Hello! How can I assist you today?"
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim() === '') return
 
     const newMessage: Message = {
@@ -214,36 +214,131 @@ export default function ChatWidget() {
     setMessages([...messages, newMessage])
     setInputMessage('')
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse: Message = {
-        id: Date.now(),
-        sender: 'bot',
-        content: getBotResponse(inputMessage, context),
-        timestamp: new Date()
+    try {
+      const response = await fetch('/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newMessage),
+      })
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
       }
-      setMessages(prevMessages => [...prevMessages, botResponse])
-    }, 1000)
-  }
 
-  const handleDeleteMessage = (id: number) => {
-    setMessages(messages.filter(message => message.id !== id))
-  }
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
 
-  const handleEditMessage = (id: number, newContent: string) => {
-    setMessages(messages.map(message => 
-      message.id === id ? { ...message, content: newContent } : message
-    ))
-    setEditingMessageId(null)
-  }
-
-  const getBotResponse = (message: string, context: string): string => {
-    if (context === 'Onboarding') {
-      return `I understand you're asking about "${message}". As your onboarding assistant, I'm here to help you get started. Is there anything specific about our onboarding process you'd like to know?`
-    } else if (context === 'Campaign') {
-      return `Regarding your question about "${message}", I'd be happy to assist you with your campaign strategy. Could you provide more details about your campaign goals?`
+      let botResponse = ''
+      while (reader) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = JSON.parse(line.slice(5))
+            if (data === '[DONE]') {
+              break
+            }
+            botResponse += data.content
+            setMessages(prevMessages => {
+              const lastMessage = prevMessages[prevMessages.length - 1]
+              if (lastMessage.sender === 'bot') {
+                return [
+                  ...prevMessages.slice(0, -1),
+                  { ...lastMessage, content: botResponse }
+                ]
+              } else {
+                return [
+                  ...prevMessages,
+                  { id: Date.now(), sender: 'bot', content: botResponse, timestamp: new Date() }
+                ]
+              }
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
     }
-    return "I'm sorry, I don't have enough context to provide a meaningful response. Could you please clarify your question?"
+  }
+
+  const handleDeleteMessage = async (id: number) => {
+    try {
+      const response = await fetch(`/delete/${id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      while (reader) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = JSON.parse(line.slice(5))
+            if (data === '[DONE]') {
+              break
+            }
+            if (data.deleted) {
+              setMessages(messages.filter(message => message.id !== data.deleted))
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const handleEditMessage = async (id: number, newContent: string) => {
+    try {
+      const response = await fetch(`/edit/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: newContent }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      let updatedContent = ''
+      while (reader) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = JSON.parse(line.slice(5))
+            if (data === '[DONE]') {
+              break
+            }
+            updatedContent += data.content
+            setMessages(prevMessages => 
+              prevMessages.map(message => 
+                message.id === id ? { ...message, content: updatedContent } : message
+              )
+            )
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setEditingMessageId(null)
   }
 
   const generateReport = () => {
