@@ -49,12 +49,12 @@ async def stream_chatgpt_response(prompt: str):
                 yield f"data: {json.dumps({'content': delta})}\n\n"
     yield "data: [DONE]\n\n"
 
-@app.post("api/send")
+@app.post("/send")
 async def send_message(message: Message):
     messages.append(message)
     return StreamingResponse(stream_chatgpt_response(message.content), media_type="text/event-stream")
 
-@app.delete("api/delete/{message_id}")
+@app.delete("/delete/{message_id}")
 async def delete_message(message_id: int):
     global messages
     messages = [msg for msg in messages if msg.id != message_id]
@@ -63,7 +63,7 @@ async def delete_message(message_id: int):
         yield "data: [DONE]\n\n"
     return StreamingResponse(stream_delete(), media_type="text/event-stream")
 
-@app.put("api/edit/{message_id}")
+@app.put("/edit/{message_id}")
 async def edit_message(message_id: int, updated_content: str):
     for msg in messages:
         if msg.id == message_id:
@@ -74,6 +74,6 @@ async def edit_message(message_id: int, updated_content: str):
     
     return StreamingResponse(stream_chatgpt_response(updated_content), media_type="text/event-stream")
 
-@app.get("api/messages")
+@app.get("/messages")
 async def get_messages():
     return messages
