@@ -17,7 +17,11 @@ openai.api_key = OPENAI_API_KEY
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow requests from any origin
+    allow_origins=[
+        "https://abrartisan-ai.vercel.app", # prod
+        "http://localhost:8000",            # dev
+        "http://127.0.0.1:8000"             # alt
+    ],    
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
