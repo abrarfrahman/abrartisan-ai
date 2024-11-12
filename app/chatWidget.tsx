@@ -41,7 +41,7 @@ export default function ChatWidget() {
                 </div>
                 <div>
                 <h1 className="text-purple-600 text-xl font-semibold flex items-center">
-                    Hey👋, I'm Ava
+                    Hey👋, I&apos;m Ava
                 </h1>
                 <p className="text-gray-600 text-sm mt-1">
                     Ask me anything or pick a place to start
